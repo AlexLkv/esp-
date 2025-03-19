@@ -1,45 +1,24 @@
-const express = require("express");
-const http = require("http");
-const WebSocket = require("ws");
-const cors = require("cors");
-
+const express = require('express');
 const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
-let clients = [];
+// Раздаём статические файлы из папки public
+app.use(express.static('public'));
 
-wss.on("connection", (ws) => {
-    if (clients.length < 2) {
-        clients.push(ws);
-        console.log("Новое устройство подключено");
+// Создаём комнату для пользователей (например, "room1")
+io.on('connection', socket => {
+  console.log('Подключён пользователь:', socket.id);
+  socket.join('room1');
 
-        ws.on("message", (message) => {
-            console.log(`Получено сообщение: ${message}`);
-            clients.forEach((client) => {
-                if (client !== ws && client.readyState === WebSocket.OPEN) {
-                    client.send(message);
-                }
-            });
-        });
-
-        ws.on("close", () => {
-            console.log("Устройство отключено");
-            clients = clients.filter((client) => client !== ws);
-        });
-    } else {
-        ws.close();
-        console.log("Отклонено подключение, комната заполнена");
-    }
+  // Получаем событие нажатия кнопки от одного из клиентов
+  socket.on('buttonPress', () => {
+    console.log(`Кнопка нажата пользователем ${socket.id}`);
+    // Отправляем команду другому пользователю в комнате
+    socket.to('room1').emit('toggleLED');
+  });
 });
 
-app.use(cors());
-app.get("/", (req, res) => {
-    res.send("Сервер работает");
-});
-
-const PORT = process.env.PORT || 80;
-
-server.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
+http.listen(3000, () => {
+  console.log('Сервер запущен на порту 3000');
 });
