@@ -1,0 +1,18 @@
+{
+  "name": "esp32-bluetooth-room",
+  "version": "1.0.0",
+  "description": "Проект для создания комнаты для двух пользователей с подключением ESP32-C3 по Bluetooth",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.5.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
