@@ -21,13 +21,11 @@
     document.getElementById('connect').addEventListener('click', async () => {
       try {
         device = await navigator.bluetooth.requestDevice({
-          // Укажите здесь нужные UUID сервиса. Например, если вы используете сервис с определённым UUID:
+          // Укажите здесь нужный UUID сервиса
           filters: [{ services: ['your_service_uuid'] }]
         });
         server = await device.gatt.connect();
-        // Получаем нужный сервис по его UUID
         service = await server.getPrimaryService('your_service_uuid');
-        // Получаем характеристику для управления светодиодом
         characteristic = await service.getCharacteristic('your_characteristic_uuid');
         console.log('Подключено к ESP32-C3');
       } catch (error) {
@@ -35,13 +33,10 @@
       }
     });
 
-    // Обработка нажатия кнопки на клиенте
+    // Отправка события на сервер при нажатии кнопки
     document.getElementById('press').addEventListener('click', async () => {
-      // Отправляем событие на сервер
       socket.emit('buttonPress');
-      // Дополнительно можно отправить команду на свой ESP32-C3 (например, включить светодиод локально)
       if (characteristic) {
-        // Отправляем команду (пример: значение 1 для включения светодиода)
         try {
           await characteristic.writeValue(new Uint8Array([1]));
           console.log('Команда отправлена на локальный ESP32-C3');
@@ -51,18 +46,17 @@
       }
     });
 
-    // Получение события от сервера для управления светодиодом удалённого ESP32-C3
+    // Получение команды от сервера для управления светодиодом на удалённом устройстве
     socket.on('toggleLED', async () => {
       if (characteristic) {
         try {
-          // Пример: отправляем команду для включения светодиода
           await characteristic.writeValue(new Uint8Array([1]));
           console.log('Удалённый светодиод включён');
         } catch (error) {
           console.error('Ошибка при переключении светодиода на удалённом ESP32-C3:', error);
         }
       } else {
-        console.warn('Не подключён Bluetooth-устройство');
+        console.warn('Bluetooth-устройство не подключено');
       }
     });
   </script>
