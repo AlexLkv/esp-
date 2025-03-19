@@ -1,40 +1,43 @@
-#include <ArduinoWebsockets.h>
-#include <BluetoothSerial.h>
+const express = require("express");
+const http = require("http");
+const WebSocket = require("ws");
+const cors = require("cors");
 
-using namespace websockets;
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-WebsocketsClient client;
-BluetoothSerial SerialBT;
-const int ledPin = 2;  // GPIO для светодиода
+let clients = [];
 
-void setup() {
-    Serial.begin(115200);
-    SerialBT.begin("ESP32-C3");  // Имя Bluetooth устройства
-    pinMode(ledPin, OUTPUT);
+wss.on("connection", (ws) => {
+    if (clients.length < 2) {
+        clients.push(ws);
+        console.log("Новое устройство подключено");
 
-    client.onMessage([](WebsocketsMessage message) {
-        String msg = message.data();
-        if (msg == "LED_ON") {
-            digitalWrite(ledPin, HIGH);
-        } else if (msg == "LED_OFF") {
-            digitalWrite(ledPin, LOW);
-        }
-    });
+        ws.on("message", (message) => {
+            console.log(`Получено сообщение: ${message}`);
+            clients.forEach((client) => {
+                if (client !== ws && client.readyState === WebSocket.OPEN) {
+                    client.send(message);
+                }
+            });
+        });
 
-    client.connect("ws://192.168.1.100:3000");  // IP сервера
-
-    Serial.println("ESP32-C3 готов!");
-}
-
-void loop() {
-    client.poll();
-
-    if (SerialBT.available()) {
-        char command = SerialBT.read();
-        if (command == '1') {
-            client.send("LED_ON");
-        } else if (command == '0') {
-            client.send("LED_OFF");
-        }
+        ws.on("close", () => {
+            console.log("Устройство отключено");
+            clients = clients.filter((client) => client !== ws);
+        });
+    } else {
+        ws.close();
+        console.log("Отклонено подключение, комната заполнена");
     }
-}
+});
+
+app.use(cors());
+app.get("/", (req, res) => {
+    res.send("Сервер работает");
+});
+
+server.listen(3000, () => {
+    console.log("Сервер запущен на порту 3000");
+});
