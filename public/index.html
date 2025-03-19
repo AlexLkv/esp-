@@ -1,72 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Комната для ESP32-C3</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Room</title>
 </head>
 <body>
-  <h1>Подключение ESP32-C3 по Bluetooth</h1>
-  <button id="connect">Подключиться к ESP32-C3</button>
-  <button id="press">Нажать кнопку</button>
+    <button onclick="createRoom()">Создать комнату</button>
+    <input id="roomIdInput" placeholder="Room ID">
+    <button onclick="joinRoom()">Присоединиться</button>
+    <button onclick="connectESP()">Подключить ESP32</button>
+    <button onclick="sendSignal()">Отправить сигнал</button>
+    <p id="status"></p>
+    
+    <script>
+        let ws, device, server, characteristic;
 
-  <!-- Socket.IO -->
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-
-    let device, server, service, characteristic;
-
-    document.getElementById('connect').addEventListener('click', async () => {
-      try {
-        console.log('Запрос устройства...');
-        device = await navigator.bluetooth.requestDevice({
-          // Для отладки можно использовать acceptAllDevices:
-          // acceptAllDevices: true,
-          // optionalServices: ['00001234-0000-1000-8000-00805f9b34fb']
-          filters: [{ services: ['your_service_uuid'] }]
-        });
-        console.log('Устройство выбрано:', device);
-
-        console.log('Подключение к GATT серверу...');
-        server = await device.gatt.connect();
-        console.log('GATT сервер подключен');
-
-        console.log('Получение сервиса...');
-        service = await server.getPrimaryService('your_service_uuid');
-        console.log('Сервис получен');
-
-        console.log('Получение характеристики...');
-        characteristic = await service.getCharacteristic('your_characteristic_uuid');
-        console.log('Характеристика получена, подключение завершено');
-      } catch (error) {
-        console.error('Ошибка подключения Bluetooth:', error);
-      }
-    });
-
-    document.getElementById('press').addEventListener('click', async () => {
-      socket.emit('buttonPress');
-      if (characteristic) {
-        try {
-          await characteristic.writeValue(new Uint8Array([1]));
-          console.log('Команда отправлена на локальный ESP32-C3');
-        } catch (error) {
-          console.error('Ошибка при отправке команды на ESP32-C3:', error);
+        function createRoom() {
+            ws = new WebSocket("ws://localhost:3000");
+            ws.onopen = () => ws.send(JSON.stringify({ type: "create" }));
+            ws.onmessage = (event) => {
+                let data = JSON.parse(event.data);
+                if (data.type === "room_created") {
+                    document.getElementById("roomIdInput").value = data.roomId;
+                    alert("Комната создана: " + data.roomId);
+                }
+            };
         }
-      }
-    });
 
-    socket.on('toggleLED', async () => {
-      if (characteristic) {
-        try {
-          await characteristic.writeValue(new Uint8Array([1]));
-          console.log('Удалённый светодиод включён');
-        } catch (error) {
-          console.error('Ошибка при переключении светодиода на удалённом ESP32-C3:', error);
+        function joinRoom() {
+            let roomId = document.getElementById("roomIdInput").value;
+            if (!roomId) return alert("Введите Room ID!");
+
+            ws = new WebSocket("ws://localhost:3000");
+            ws.onopen = () => ws.send(JSON.stringify({ type: "join", roomId }));
+            ws.onmessage = (event) => {
+                let data = JSON.parse(event.data);
+                if (data.type === "ready") alert("Оба игрока в комнате!");
+                if (data.type === "signal") toggleLED();
+            };
         }
-      } else {
-        console.warn('Bluetooth-устройство не подключено');
-      }
-    });
-  </script>
+
+        async function connectESP() {
+            try {
+                device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ["battery_service"] });
+                server = await device.gatt.connect();
+                characteristic = await server.getPrimaryService("battery_service").then(service => service.getCharacteristic("battery_level"));
+                alert("ESP32 подключён!");
+            } catch (error) {
+                console.error(error);
+                alert("Ошибка подключения!");
+            }
+        }
+
+        function sendSignal() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "signal" }));
+            }
+        }
+
+        async function toggleLED() {
+            if (characteristic) {
+                let value = await characteristic.readValue();
+                let newValue = value.getUint8(0) === 0 ? 1 : 0;
+                await characteristic.writeValue(new Uint8Array([newValue]));
+                document.getElementById("status").innerText = `LED: ${newValue ? "ON" : "OFF"}`;
+            }
+        }
+    </script>
 </body>
 </html>
