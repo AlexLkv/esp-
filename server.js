@@ -38,6 +38,8 @@ app.get("/", (req, res) => {
     res.send("Сервер работает");
 });
 
-server.listen(3000, () => {
-    console.log("Сервер запущен на порту 3000");
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
 });
