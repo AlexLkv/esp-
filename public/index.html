@@ -14,26 +14,35 @@
   <script>
     const socket = io();
 
-    // Переменные для работы с Bluetooth
     let device, server, service, characteristic;
 
-    // Функция для подключения к ESP32-C3
     document.getElementById('connect').addEventListener('click', async () => {
       try {
+        console.log('Запрос устройства...');
         device = await navigator.bluetooth.requestDevice({
-          // Укажите здесь нужный UUID сервиса
+          // Для отладки можно использовать acceptAllDevices:
+          // acceptAllDevices: true,
+          // optionalServices: ['00001234-0000-1000-8000-00805f9b34fb']
           filters: [{ services: ['your_service_uuid'] }]
         });
+        console.log('Устройство выбрано:', device);
+
+        console.log('Подключение к GATT серверу...');
         server = await device.gatt.connect();
+        console.log('GATT сервер подключен');
+
+        console.log('Получение сервиса...');
         service = await server.getPrimaryService('your_service_uuid');
+        console.log('Сервис получен');
+
+        console.log('Получение характеристики...');
         characteristic = await service.getCharacteristic('your_characteristic_uuid');
-        console.log('Подключено к ESP32-C3');
+        console.log('Характеристика получена, подключение завершено');
       } catch (error) {
         console.error('Ошибка подключения Bluetooth:', error);
       }
     });
 
-    // Отправка события на сервер при нажатии кнопки
     document.getElementById('press').addEventListener('click', async () => {
       socket.emit('buttonPress');
       if (characteristic) {
@@ -46,7 +55,6 @@
       }
     });
 
-    // Получение команды от сервера для управления светодиодом на удалённом устройстве
     socket.on('toggleLED', async () => {
       if (characteristic) {
         try {
