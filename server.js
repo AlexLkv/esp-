@@ -46,4 +46,4 @@ wss.on("connection", (ws) => {
     });
 });
 
-server.listen(3000, () => console.log("Сервер запущен на порту 3000"));
+server.listen(80, () => console.log("Сервер запущен на порту 80"));
